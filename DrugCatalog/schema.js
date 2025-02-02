@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const drugCatalogSchema = new mongoose.Schema({
-  _id: { // Số đăng ký (Registration Number)
+  registrationNumber: { // Số đăng ký (Registration Number)
     type: String,
     required: true,
   },
