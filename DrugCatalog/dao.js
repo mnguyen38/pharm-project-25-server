@@ -24,8 +24,9 @@ export async function createDrugCatalog(drugs) {
   };
 }
 
-export function findAllDrugCatalog() {
-  return model.find();
+export function findAllDrugCatalog({ page = 1, limit = 25 } = {}) {
+  const skip = (page - 1) * limit;
+  return model.find().skip(skip).limit(limit);
 }
 
 export function findDrugCatalogById(id) {
