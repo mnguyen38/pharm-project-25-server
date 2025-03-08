@@ -24,8 +24,8 @@ npm start
 ```
 This will start the server on http://localhost:4000 with hot reload enabled using nodemon.
 
-### Endpoints
-#### Upload pdf and trigger pdf parsing
+## Endpoints
+### Upload pdf and trigger pdf parsing
 ```
 curl -X POST http://localhost:4000/uploadPdf -F "pdf=@/path/to/your/file.pdf"
 ```
