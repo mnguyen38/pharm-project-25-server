@@ -7,59 +7,59 @@ const drugCatalogSchema = new mongoose.Schema({
   },
   name: { // Tên thuốc
     type: String,
-    required: true,
+    // required: true,
   },
   ingredients: { // Tên hoạt chất
     type: String,
-    required: true,
+    // required: true,
   },
   manufacturingRequirements: { // Quy cách đóng gói
     type: String,
-    required: true,
+    // required: false,
   },
   unitOfMeasure: { // Đơn vị tính đVT
     type: String,
-    required: true,
+    // required: false,
   },
   estimatedPrice: { // Giá dự kiến
     type: Number,
-    required: false,
+    // required: false,
   },
   manufacturer: { // Doanh nghiệp sản xuất
     type: String,
-    required: true,
+    // required: true,
   },
   distributor: { // Doanh nghiệp kê khai
     type: String,
-    required: true,
+    // required: true,
   },
   yearOfRegistration: { // Ngày tiếp nhận Hồ sơ kê khai
     type: String,
-    required: true,
+    // required: false,
   },
   countryOfOrigin: { // Nước sản xuất
     type: String,
-    required: true,
+    // required: true,
   },
   usageForm: { // Dạng bào chế
     type: String,
-    required: true,
+    // required: false,
   },
   contentOfReview: { // Nội dung rà soát
     type: String,
-    required: false,
+    // required: false,
   },
   noProposalsOnPrice: { // Số Văn bản kiến nghị về mức giá đã kê khai
     type: String,
-    required: false,
+    // required: false,
   },
   dateOfProposolsOnPrice: {// Ngày Văn bản kiến nghị về mức giá đã kê khai
     type: String,
-    required: false,
+    // required: false,
   },
   additionalNotes: { // Ghi chú
     type: String,
-    required: false,
+    // required: false,
   },
 
 

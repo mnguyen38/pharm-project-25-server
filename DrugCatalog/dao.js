@@ -1,26 +1,48 @@
 import model from "./model.js";
 
 export async function createDrugCatalog(drugs) {
-  // Find existing _id values in the database
-  const existingIds = await model.find(
-    { _id: { $in: drugs.map(drug => drug._id) } },
-    { _id: 1 } // Only return the _id field
-  ).then(docs => docs.map(doc => doc._id));
+  // Check if any drugs have _id fields
+  const drugsWithIds = drugs.filter(drug => drug._id);
+  const drugsWithoutIds = drugs.filter(drug => !drug._id);
+  
+  let insertedCount = 0;
+  let skippedCount = 0;
+  
+  // Process drugs with IDs
+  if (drugsWithIds.length > 0) {
+    // Find existing _id values in the database
+    const existingIds = await model.find(
+      { _id: { $in: drugsWithIds.map(drug => drug._id) } },
+      { _id: 1 } // Only return the _id field
+    ).then(docs => docs.map(doc => doc._id.toString()));
 
-  // Filter out drugs with existing _id values
-  const newDrugs = drugs.filter(drug => !existingIds.includes(drug._id));
-
-  if (newDrugs.length === 0) {
-    console.log('All records are duplicates. Skipping upload.');
-    return { insertedCount: 0, skippedCount: drugs.length };
+    // Filter out drugs with existing _id values
+    const newDrugsWithIds = drugsWithIds.filter(drug => !existingIds.includes(drug._id.toString()));
+    
+    if (newDrugsWithIds.length > 0) {
+      const result = await model.insertMany(newDrugsWithIds, { ordered: false });
+      insertedCount += result.length;
+    }
+    
+    skippedCount += drugsWithIds.length - newDrugsWithIds.length;
+  }
+  
+  // Process drugs without IDs (like from PDF parsing)
+  if (drugsWithoutIds.length > 0) {
+    try {
+      // Directly insert drugs without IDs - MongoDB will generate IDs
+      const result = await model.insertMany(drugsWithoutIds, { ordered: false });
+      insertedCount += result.length;
+    } catch (error) {
+      console.error('Error inserting drugs without IDs:', error);
+      // If some failed validation, count them as skipped
+      skippedCount += drugsWithoutIds.length;
+    }
   }
 
-  // Insert only non-duplicate drugs
-  const result = await model.insertMany(newDrugs, { ordered: false });
-
   return {
-    insertedCount: result.length,
-    skippedCount: drugs.length - newDrugs.length,
+    insertedCount,
+    skippedCount,
   };
 }
 

@@ -28,43 +28,6 @@ mongoose
   .catch((err) => console.error("Failed to connect to MongoDB:", err));
 
 DrugCatalogRoutes(app);
-// Set up multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, "uploaded_files"));
-  },
-  filename: (req, file, cb) => {
-    cb(null, file.originalname);
-  },
-});
-
-const upload = multer({ storage });
-
-// Endpoint to handle PDF file upload
-app.post("/uploadPdf", upload.single("pdf"), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded" });
-  }
-  try {
-    const pdfFilePath = path.join(
-      __dirname,
-      "uploaded_files",
-      req.file.originalname
-    );
-    const parsedData = await parsePdf(pdfFilePath);
-    res
-      .status(200)
-      .json({
-        message: "File uploaded and parsed successfully",
-        file: req.file,
-        parsedData,
-      });
-  } catch (error) {
-    console.error("Error parsing PDF:", error);
-    res.status(500).json({ error: "Error parsing PDF" });
-  }
-});
-
 const PORT = 4000;
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
