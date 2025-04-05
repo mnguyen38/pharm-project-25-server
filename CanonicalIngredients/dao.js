@@ -71,3 +71,18 @@ export function findCanonicalIngredientsByPattern(namePattern) {
 export function getTopIngredients(limit = 20) {
   return model.find().sort({ count: -1 }).limit(limit);
 }
+
+export const findCanonicalIngredientsByNames = async (normalizedNames) => {
+  // Convert array of names to an array of regex patterns for case-insensitive matching
+  const namePatterns = normalizedNames.map(
+    (name) => new RegExp(`^${name}$`, "i")
+  );
+
+  return await model.find({
+    name: { $in: namePatterns },
+  });
+};
+
+export const addCanonicalIngredients = async (ingredients) => {
+  return await model.insertMany(ingredients);
+};
