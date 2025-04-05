@@ -19,15 +19,23 @@ export default function DrugCatalogRoutes(app) {
 
   // Some fixes to display drugs in pages to better load data
   app.get("/drugCatalog", async (req, res) => {
-    console.log("/drugCatalog");
-    console.log(req.query);
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 25; // Number can be changable having this to test
     try {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 25;
+
+      // First, get the total count for pagination
+      const totalCount = await dao.countDrugCatalog();
+
+      // Then get the data for the current page
       const drugs = await dao.findAllDrugCatalog({ page, limit });
+
+      // Set pagination headers
+      res.set("X-Total-Count", totalCount.toString());
+      res.set("Access-Control-Expose-Headers", "X-Total-Count");
+
       res.json(drugs);
     } catch (error) {
-      res.status(400).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   });
 
