@@ -25,7 +25,25 @@ npm start
 This will start the server on http://localhost:4000 with hot reload enabled using nodemon.
 
 ### Endpoints
-#### Upload pdf and trigger pdf parsing
+
+#### Upload PDF and trigger PDF parsing
 ```
 curl -X POST http://localhost:4000/uploadPdf -F "pdf=@/path/to/your/file.pdf"
 ```
+
+#### Check PDF parsing status
+```
+curl http://localhost:4000/pdfStatus/:jobId
+```
+
+The PDF parsing process now supports:
+- Large files by chunking PDFs into 5-page segments
+- Progress tracking via status polling
+- Asynchronous processing with status updates
+
+### Error Handling
+
+If you encounter "No job ID returned from server" errors:
+1. Ensure the server is running
+2. Check if the uploaded_files directory exists (it will be created automatically)
+3. Verify that your .env file contains a valid GEMINI_API_KEY
