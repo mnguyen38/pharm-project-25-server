@@ -13,14 +13,15 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "models/gemini-1.5-flash" });
 
 // Constants for chunking PDFs
-const PAGES_PER_CHUNK = 5; // Process 5 pages at a time
+const PAGES_PER_CHUNK = 1; // Process 5 pages at a time
 
 // Base prompt template for PDF parsing - shared between full PDF and chunk processing
 const BASE_PROMPT_TEMPLATE = `
 You are an expert pharmaceutical data extraction specialist. Extract structured information from this Vietnamese pharmaceutical drug registration document from the Ministry of Health (Bộ Y Tế).
 
 The document structure includes:
-- Medication entries numbered from 1-79
+- Medication entries numbered from 1-n (depending on the document).
+- Each entry starts with a number STT (e.g., 1, 2, 3, etc.) followed by the drug name.
 - Each medication has details like name, active ingredients, dosage form, etc.
 - Medications are grouped under registration companies and manufacturing companies
 
@@ -56,21 +57,32 @@ Format your output as a JSON array of objects. Each object should have these exa
 ONLY respond with valid JSON. No explanatory text before or after. The response should be parseable by JSON.parse().
 `;
 
-export async function parsePdf(pdfFilePath) {
+export async function parsePdf(pdfFilePath, progressCallback = null) {
   try {
     const pdfBuffer = fs.readFileSync(pdfFilePath);
+
+    const statusUpdate = (progress, message) => {
+      console.log(`Status: ${message} (${progress}%)`);
+      if (progressCallback) {
+        progressCallback(progress, message);
+      }
+    };
+
+    statusUpdate(15, "Reading PDF file");
 
     // Get PDF page count
     const pdfDoc = await PDFDocument.load(pdfBuffer);
     const pageCount = pdfDoc.getPageCount();
 
+    statusUpdate(20, `PDF has ${pageCount} pages, preparing for processing`);
+
     if (pageCount > PAGES_PER_CHUNK) {
       console.log(
         `PDF has ${pageCount} pages. Processing in chunks of ${PAGES_PER_CHUNK} pages...`
       );
-      return await processLargePdf(pdfBuffer, pageCount);
+      return await processLargePdf(pdfBuffer, pageCount, statusUpdate);
     } else {
-      return await processSinglePdf(pdfBuffer);
+      return await processSinglePdf(pdfBuffer, statusUpdate);
     }
   } catch (error) {
     console.error("Error parsing PDF:", error);
@@ -79,13 +91,17 @@ export async function parsePdf(pdfFilePath) {
 }
 
 // Process a single PDF (original method)
-async function processSinglePdf(pdfBuffer) {
+async function processSinglePdf(pdfBuffer, statusUpdate) {
   try {
+    statusUpdate(30, "Starting PDF processing");
+
     // Create a prompt for processing the entire PDF
     const pdfParsingPrompt = `
     ${BASE_PROMPT_TEMPLATE}
     BE COMPLETELY SURE YOU PARSE EVERY SINGLE PAGE OF THE PDF.
     `;
+
+    statusUpdate(40, "Sending PDF to AI for analysis");
 
     const result = await model.generateContent([
       {
@@ -97,8 +113,19 @@ async function processSinglePdf(pdfBuffer) {
       pdfParsingPrompt,
     ]);
 
+    statusUpdate(80, "Received response from AI, processing results");
+
     const jsonText = result.response.text();
-    return parseJsonResponse(jsonText);
+
+    statusUpdate(90, "Parsing extracted data");
+
+    const parsedData = parseJsonResponse(jsonText);
+    statusUpdate(
+      95,
+      `Extraction complete. Found ${parsedData.length} drug entries`
+    );
+
+    return parsedData;
   } catch (error) {
     console.error("Error parsing PDF:", error);
     throw new Error(`Failed to parse PDF: ${error.message}`);
@@ -106,9 +133,10 @@ async function processSinglePdf(pdfBuffer) {
 }
 
 // Process a large PDF by splitting it into page-based chunks
-async function processLargePdf(pdfBuffer, totalPages) {
+async function processLargePdf(pdfBuffer, totalPages, statusUpdate) {
   const numChunks = Math.ceil(totalPages / PAGES_PER_CHUNK);
-  console.log(`Splitting PDF into ${numChunks} chunks for processing...`);
+
+  statusUpdate(25, `Breaking PDF into ${numChunks} chunks for processing`);
 
   let allDrugs = [];
 
@@ -116,11 +144,14 @@ async function processLargePdf(pdfBuffer, totalPages) {
     // Calculate page range for this chunk
     const startPage = i * PAGES_PER_CHUNK;
     const endPage = Math.min((i + 1) * PAGES_PER_CHUNK - 1, totalPages - 1);
-    console.log(
-      `Processing chunk ${i + 1}/${numChunks} (pages ${startPage + 1}-${
-        endPage + 1
-      })...`
-    );
+
+    // Calculate progress percentage for this chunk
+    const chunkProgressBase = 25 + (i / numChunks) * 65; // Start at 25%, end at 90%
+
+    const chunkStatus = `Processing chunk ${i + 1}/${numChunks} (pages ${
+      startPage + 1
+    }-${endPage + 1})`;
+    statusUpdate(Math.round(chunkProgressBase), chunkStatus);
 
     // Extract the specific pages for this chunk
     const pdfChunk = await extractPdfPages(pdfBuffer, startPage, endPage);
@@ -152,6 +183,11 @@ async function processLargePdf(pdfBuffer, totalPages) {
 
     // Process the chunk
     try {
+      statusUpdate(
+        Math.round(chunkProgressBase + 5),
+        `Sending chunk ${i + 1}/${numChunks} to AI for analysis`
+      );
+
       const result = await model.generateContent([
         {
           inlineData: {
@@ -163,20 +199,24 @@ async function processLargePdf(pdfBuffer, totalPages) {
       ]);
 
       const jsonText = result.response.text();
-      console.log(
-        `Chunk ${i + 1} response length: ${jsonText.length} characters`
+
+      statusUpdate(
+        Math.round(chunkProgressBase + 8),
+        `Parsing results from chunk ${i + 1}/${numChunks}`
       );
 
       // Parse the chunk results
       const chunkDrugs = await parseJsonResponse(jsonText);
-      console.log(
-        `Extracted ${chunkDrugs.length} drug entries from chunk ${
-          i + 1
-        } (pages ${startPage + 1}-${endPage + 1})`
-      );
 
       // Add to our collected results
       allDrugs = [...allDrugs, ...chunkDrugs];
+
+      statusUpdate(
+        Math.round(chunkProgressBase + 10),
+        `Added ${chunkDrugs.length} entries from chunk ${
+          i + 1
+        }/${numChunks}, total so far: ${allDrugs.length}`
+      );
     } catch (error) {
       console.error(
         `Error processing chunk ${i + 1} (pages ${startPage + 1}-${
@@ -184,13 +224,21 @@ async function processLargePdf(pdfBuffer, totalPages) {
         }):`,
         error
       );
+
+      statusUpdate(
+        Math.round(chunkProgressBase),
+        `Error in chunk ${i + 1}/${numChunks}, continuing with next chunk`
+      );
+
       console.log("Continuing to next chunk...");
     }
   }
 
-  console.log(
-    `Finished processing all chunks. Total drugs extracted: ${allDrugs.length}`
+  statusUpdate(
+    95,
+    `Processing complete. Total drugs extracted: ${allDrugs.length}`
   );
+
   return allDrugs;
 }
 
