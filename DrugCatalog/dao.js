@@ -107,6 +107,10 @@ export async function findAllDrugCatalog({ page = 1, limit = 25 } = {}) {
   return model.find().skip(skip).limit(limit);
 }
 
+export async function countDrugCatalog() {
+  return model.countDocuments();
+}
+
 export function findDrugCatalogById(id) {
   return model.findById(id);
 }
