@@ -19,6 +19,8 @@ export default function DrugCatalogRoutes(app) {
 
   // Some fixes to display drugs in pages to better load data
   app.get("/drugCatalog", async (req, res) => {
+    console.log("/drugCatalog");
+    console.log(req.query);
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 25; // Number can be changable having this to test
     try {
