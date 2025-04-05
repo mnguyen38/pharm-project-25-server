@@ -165,20 +165,13 @@ async function processLargePdf(pdfBuffer, totalPages, statusUpdate) {
     } of ${numChunks} from a large document, containing pages ${
       startPage + 1
     } to ${endPage + 1} of ${totalPages} total pages.
-    ${
-      i > 0
-        ? "There may be partially visible entries at the beginning that were completed in the previous chunk - DO NOT include these partial entries."
-        : ""
-    }
-    ${
-      i < numChunks - 1
-        ? "There may be incomplete entries at the end that continue in the next chunk - DO NOT include these partial entries."
-        : ""
-    }
 
-    Only extract COMPLETE medication entries where ALL required information is visible within this page range.
+    Try your best to extract complete medication entries where required information is visible within this page range.
+    But if you see incomplete entries, err on the side of caution and DO include them in the output.
+    Simply leave the missing information blank in the JSON response.
+    A human can input the missing information later.
 
-    If you see no complete entries in this chunk, return an empty array: [].
+    If you see no entries at all in this chunk, return an empty array: [].
     `;
 
     // Process the chunk
@@ -288,8 +281,16 @@ function parseJsonResponse(jsonText) {
     console.log("Response Text Length:", jsonText.length);
     console.log("Response Text Start:", jsonText.slice(0, 200));
 
+    // Remove markdown code block formatting if present (```json ... ```)
+    let cleanedText = jsonText;
+    const markdownMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (markdownMatch) {
+      console.log("Detected markdown code block formatting, removing it");
+      cleanedText = markdownMatch[1].trim();
+    }
+
     // Parse the JSON response
-    const drugs = JSON.parse(jsonText);
+    const drugs = JSON.parse(cleanedText);
 
     // Validate and clean each drug object
     return drugs.map((drug) => ({
