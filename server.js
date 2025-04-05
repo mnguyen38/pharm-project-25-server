@@ -9,6 +9,7 @@ import { fileURLToPath } from "url";
 import path from "path";
 import { parsePdf } from "./PdfParser/GeminiParser.js";
 import fs from "fs";
+import ingredientsRouter from "./routes/ingredientsRouter.js";
 
 // Store for tracking PDF parsing progress
 const pdfParsingStatus = new Map();
@@ -36,6 +37,7 @@ mongoose
 // Setup routes
 DrugCatalogRoutes(app);
 CanonicalIngredientsRoutes(app);
+app.use("/ingredients", ingredientsRouter);
 
 // Create upload_files directory if it doesn't exist
 const uploadDir = path.join(__dirname, "uploaded_files");
