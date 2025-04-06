@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import { PDFDocument } from "pdf-lib";
+import { cleanIngredients } from "../utils/cleanIngredients.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -292,24 +293,31 @@ function parseJsonResponse(jsonText) {
     // Parse the JSON response
     const drugs = JSON.parse(cleanedText);
 
-    // Validate and clean each drug object
-    return drugs.map((drug) => ({
-      name: drug.name || "",
-      ingredients: drug.ingredients || "",
-      registrationNumber: drug.registrationNumber || "",
-      manufacturingRequirements: drug.manufacturingRequirements || "",
-      unitOfMeasure: drug.unitOfMeasure || "",
-      estimatedPrice: Number(drug.estimatedPrice) || 0,
-      manufacturer: drug.manufacturer || "",
-      distributor: drug.distributor || "",
-      yearOfRegistration: drug.yearOfRegistration || "",
-      countryOfOrigin: drug.countryOfOrigin || "",
-      usageForm: drug.usageForm || "",
-      contentOfReview: drug.contentOfReview || "",
-      noProposalsOnPrice: drug.noProposalsOnPrice || "",
-      dateOfProposolsOnPrice: drug.dateOfProposolsOnPrice || "",
-      additionalNotes: drug.additionalNotes || "",
-    }));
+    // Validate and clean each drug object, including processing ingredients
+    return drugs.map((drug) => {
+      // Process ingredients with the cleanIngredients function
+      const rawIngredients = drug.ingredients || "";
+      const cleanedIngredientsList = cleanIngredients(rawIngredients);
+
+      return {
+        name: drug.name || "",
+        ingredients: rawIngredients,
+        cleanedIngredients: cleanedIngredientsList,
+        registrationNumber: drug.registrationNumber || "",
+        manufacturingRequirements: drug.manufacturingRequirements || "",
+        unitOfMeasure: drug.unitOfMeasure || "",
+        estimatedPrice: Number(drug.estimatedPrice) || 0,
+        manufacturer: drug.manufacturer || "",
+        distributor: drug.distributor || "",
+        yearOfRegistration: drug.yearOfRegistration || "",
+        countryOfOrigin: drug.countryOfOrigin || "",
+        usageForm: drug.usageForm || "",
+        contentOfReview: drug.contentOfReview || "",
+        noProposalsOnPrice: drug.noProposalsOnPrice || "",
+        dateOfProposolsOnPrice: drug.dateOfProposolsOnPrice || "",
+        additionalNotes: drug.additionalNotes || "",
+      };
+    });
   } catch (parseError) {
     console.error("Error parsing JSON response:", parseError);
 
@@ -318,7 +326,18 @@ function parseJsonResponse(jsonText) {
     const fallbackData = extractStructuredData(jsonText);
     if (fallbackData.length > 0) {
       console.log("Show fallback Data:", fallbackData);
-      return fallbackData;
+
+      // Apply cleaning to fallback data too
+      return fallbackData.map((drug) => {
+        const rawIngredients = drug.ingredients || "";
+        const cleanedIngredientsList = cleanIngredients(rawIngredients);
+
+        return {
+          ...drug,
+          ingredients: rawIngredients,
+          cleanedIngredients: cleanedIngredientsList,
+        };
+      });
     }
 
     // If all fails, throw error
